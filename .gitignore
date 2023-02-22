@@ -1,0 +1,10 @@
+.vscode
+__pycache__
+best_epoch_models_chicago/
+new_h_gat_representation/
+new_h_gat_test_representation/
+not needed/
+nyc_data/
+nyc_poi_road_traffic_representations/
+Training Losses/
+excel sheets/
