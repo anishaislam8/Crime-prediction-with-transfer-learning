@@ -5,7 +5,6 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 def create_inout_sequences(input_data, tw=120):
-    
     """
     :param input_data: raw linear data of a region
     :param tw: length of a sample
@@ -21,14 +20,16 @@ def create_inout_sequences(input_data, tw=120):
         train_seq = input_data[i:i + tw, :]
         in_seq1[i] = train_seq.view(train_seq.shape[0] * train_seq.shape[1])
         train_label = input_data[i + tw:i + tw + forecast, :]
-        out_seq1[i] = train_label.view(train_label.shape[0] * train_label.shape[1])
+        out_seq1[i] = train_label.view(
+            train_label.shape[0] * train_label.shape[1])
     in_seq1 = in_seq1[:i + 1, :]
     out_seq1 = out_seq1[:i + 1, :]
 
     # Daily_temporal_data_generation
     num_samples = in_seq1.shape[0]
     time_step_daily = int(tw / 6)
-    in_seq2 = torch.from_numpy(np.ones((num_samples, time_step_daily), dtype=np.int))
+    in_seq2 = torch.from_numpy(
+        np.ones((num_samples, time_step_daily), dtype=np.int))
     for i in range(num_samples):
         k = 0
         for j in range(tw):
@@ -38,7 +39,8 @@ def create_inout_sequences(input_data, tw=120):
 
     # Weekly_temporal_data_generation
     time_step_weekly = int(tw / (6 * 7)) + 1
-    in_seq3 = torch.from_numpy(np.ones((num_samples, time_step_weekly), dtype=np.int))
+    in_seq3 = torch.from_numpy(
+        np.ones((num_samples, time_step_weekly), dtype=np.int))
     for i in range(num_samples):
         k = 0
         for j in range(tw):
@@ -49,29 +51,36 @@ def create_inout_sequences(input_data, tw=120):
 
 
 def load_data_GAT():
-    
+
     # build features
-    idx_features_labels = np.genfromtxt("chicago_data/gat_crime.txt", dtype=np.dtype(str))  # (Nodes, NodeLabel+ features + label)
-    features = sp.csr_matrix(idx_features_labels[:, 1:], dtype=np.float32)  # (Nodes, features)
+    # (Nodes, NodeLabel+ features + label)
+    idx_features_labels = np.genfromtxt(
+        "chicago_data/gat_crime.txt", dtype=np.dtype(str))
+    features = sp.csr_matrix(
+        idx_features_labels[:, 1:], dtype=np.float32)  # (Nodes, features)
     # build features_ext
     idx_features_labels_ext = np.genfromtxt("chicago_data/gat_ext.txt",
                                             dtype=np.dtype(str))  # (Nodes, NodeLabel+ features + label)
-    features_ext = sp.csr_matrix(idx_features_labels_ext[:, 1:], dtype=np.float32)  # (Nodes, features)
+    features_ext = sp.csr_matrix(
+        idx_features_labels_ext[:, 1:], dtype=np.float32)  # (Nodes, features)
     # build features
     idx_crime_side_features_labels = np.genfromtxt("chicago_data/gat_side.txt",
-                                                    dtype=np.dtype(str))  # (Nodes, NodeLabel+ features + label)
-    crime_side_features = sp.csr_matrix(idx_crime_side_features_labels[:, 1:], dtype=np.float32)  # (Nodes, features)
+                                                   dtype=np.dtype(str))  # (Nodes, NodeLabel+ features + label)
+    crime_side_features = sp.csr_matrix(
+        idx_crime_side_features_labels[:, 1:], dtype=np.float32)  # (Nodes, features)
 
     # build graph
     num_reg = int(idx_features_labels.shape[0] / (42))
-    idx = np.array(idx_features_labels[:num_reg, 0], dtype=np.int32)  # replaced 5
+    # replaced 5
+    idx = np.array(idx_features_labels[:num_reg, 0], dtype=np.int32)
     idx_map = {j: i for i, j in enumerate(idx)}
     edges_unordered = np.genfromtxt("chicago_data/gat_adj.txt", dtype=np.int32)
-    
+
     if edges_unordered.ndim == 1 and edges_unordered.shape[0] == 2:
         edges_unordered = edges_unordered.reshape([1, 2])
-        
-    edges = np.array(list(map(idx_map.get, edges_unordered.flatten())), dtype=np.int32).reshape(edges_unordered.shape)
+
+    edges = np.array(list(map(idx_map.get, edges_unordered.flatten())),
+                     dtype=np.int32).reshape(edges_unordered.shape)
     adj = sp.coo_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])), shape=(num_reg, num_reg),
                         dtype=np.float32)  # replaced 5
     # build symmetric adjacency matrix
@@ -83,13 +92,13 @@ def load_data_GAT():
     adj = torch.FloatTensor(np.array(adj.todense()))
     features = torch.FloatTensor(np.array(features.todense()))
     features_ext = torch.FloatTensor(np.array(features_ext.todense()))
-    crime_side_features = torch.FloatTensor(np.array(crime_side_features.todense()))
+    crime_side_features = torch.FloatTensor(
+        np.array(crime_side_features.todense()))
 
     return adj, features, features_ext, crime_side_features
 
 
 def normalize_adj(mx):
-    
     """Row-normalize sparse matrix"""
     rowsum = np.array(mx.sum(1))
     r_inv_sqrt = np.power(rowsum, -0.5).flatten()
@@ -99,7 +108,6 @@ def normalize_adj(mx):
 
 
 def normalize_features(mx):
-    
     """Row-normalize sparse matrix"""
     rowsum = np.array(mx.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
@@ -110,7 +118,6 @@ def normalize_features(mx):
 
 
 def load_self_crime(x, x_daily, x_weekly, y):
-    
     """
     :param x:
     :param x_daily:
@@ -140,21 +147,26 @@ def load_self_crime(x, x_daily, x_weekly, y):
     test_y = test_y[:test_y.shape[0] - 11, :]
 
     # Divide it into batches -----> (Num of Batches, batch size, time-step features)
-    train_x = train_x.view(int(train_x.shape[0] / batch_size), batch_size, time_step)
-    train_x_daily = train_x_daily.view(int(train_x_daily.shape[0] / batch_size), batch_size, train_x_daily.shape[1])
-    train_x_weekly = train_x_weekly.view(int(train_x_weekly.shape[0] / batch_size), batch_size, train_x_weekly.shape[1])
+    train_x = train_x.view(
+        int(train_x.shape[0] / batch_size), batch_size, time_step)
+    train_x_daily = train_x_daily.view(
+        int(train_x_daily.shape[0] / batch_size), batch_size, train_x_daily.shape[1])
+    train_x_weekly = train_x_weekly.view(
+        int(train_x_weekly.shape[0] / batch_size), batch_size, train_x_weekly.shape[1])
     train_y = train_y.view(int(train_y.shape[0] / batch_size), batch_size, 1)
 
-    test_x = test_x.view(int(test_x.shape[0] / batch_size), batch_size, time_step)
-    test_x_daily = test_x_daily.view(int(test_x_daily.shape[0] / batch_size), batch_size, test_x_daily.shape[1])
-    test_x_weekly = test_x_weekly.view(int(test_x_weekly.shape[0] / batch_size), batch_size, test_x_weekly.shape[1])
+    test_x = test_x.view(
+        int(test_x.shape[0] / batch_size), batch_size, time_step)
+    test_x_daily = test_x_daily.view(
+        int(test_x_daily.shape[0] / batch_size), batch_size, test_x_daily.shape[1])
+    test_x_weekly = test_x_weekly.view(
+        int(test_x_weekly.shape[0] / batch_size), batch_size, test_x_weekly.shape[1])
     test_y = test_y.view(int(test_y.shape[0] / batch_size), batch_size, 1)
 
     return train_x, train_x_daily, train_x_weekly, train_y, test_x, test_x_daily, test_x_weekly, test_y
 
 
 def load_nei_crime(target_crime_cat, target_region, location):
-    
     """
     :param target_crime_cat: starts from 0
     :param target_region: starts from 0
@@ -171,7 +183,8 @@ def load_nei_crime(target_crime_cat, target_region, location):
     com = gen_neighbor_index_zero(target_region, location)
     scaler = MinMaxScaler(feature_range=(-1, 1))
     for i in com:
-        loaded_data = torch.from_numpy(np.loadtxt("chicago_data/" + location + "/com_crime/r_" + str(i) + ".txt", dtype=np.float)).T
+        loaded_data = torch.from_numpy(np.loadtxt(
+            "chicago_data/" + location + "/com_crime/r_" + str(i) + ".txt", dtype=np.float)).T
         loaded_data = loaded_data[:, target_crime_cat:target_crime_cat + 1]
         x, y, z, m = create_inout_sequences(loaded_data, time_step)
 
@@ -189,8 +202,10 @@ def load_nei_crime(target_crime_cat, target_region, location):
         test_y = y[train_x_size:, :]  # (samples, time-step) = (683, 1)
         test_y = test_y[:test_y.shape[0] - 11, :]
 
-        train_x = train_x.view(int(train_x.shape[0] / batch_size), batch_size, time_step)
-        test_x = test_x.view(int(test_x.shape[0] / batch_size), batch_size, time_step)
+        train_x = train_x.view(
+            int(train_x.shape[0] / batch_size), batch_size, time_step)
+        test_x = test_x.view(
+            int(test_x.shape[0] / batch_size), batch_size, time_step)
 
         train_x = train_x.transpose(2, 1)
         test_x = test_x.transpose(2, 1)
@@ -220,7 +235,6 @@ def load_nei_crime(target_crime_cat, target_region, location):
     return batch_add_train, batch_add_test
 
 
-
 def load_all_ext(target_region, location):
     """
     :param target_region: starts from 0
@@ -230,26 +244,28 @@ def load_all_ext(target_region, location):
     batch_size = 42
     time_step = 120
     train_ratio = 0.67
-    nfeature = 2  #  taxi inflow + taxi outflow
+    nfeature = 2  # taxi inflow + taxi outflow
 
     add_train = []  # train x's of the regions
     add_test = []  # test x's of the regions
-    #com = gen_neighbor_index_one_with_target(target_region, location)
+    # com = gen_neighbor_index_one_with_target(target_region, location)
     com = [target_region+1]
-    
+
     for i in com:
-        loaded_data = torch.from_numpy(np.loadtxt(location + "_data/" + location+ "/ext/taxi" + str(i) + ".txt", dtype=int)).T
+        loaded_data = torch.from_numpy(np.loadtxt(
+            location + "_data/" + location + "/ext/taxi" + str(i) + ".txt", dtype=int)).T
         loaded_data1 = loaded_data[:, 0:1]
         loaded_data2 = loaded_data[:, 1:2]
-        x_in, y_in, z_in, m_in = create_inout_sequences(loaded_data1, time_step)
-        x_out, y_out, z_out, m_out = create_inout_sequences(loaded_data2, time_step)
+        x_in, y_in, z_in, m_in = create_inout_sequences(
+            loaded_data1, time_step)
+        x_out, y_out, z_out, m_out = create_inout_sequences(
+            loaded_data2, time_step)
 
         scale = MinMaxScaler(feature_range=(0, 1))
         x_in = x_in.unsqueeze(2).double()
         x_out = x_out.unsqueeze(2).double()
         x = torch.cat([x_in, x_out], dim=2)
         # print(x.shape) # 2069, 120, 2
-       
 
         # Divide into train_test chicago_data
         train_x_size = int(x.shape[0] * train_ratio)
@@ -257,8 +273,10 @@ def load_all_ext(target_region, location):
         test_x = x[train_x_size:, :, :]
         test_x = test_x[:test_x.shape[0] - 11, :, :]
 
-        train_x = train_x.view(int(train_x.shape[0] / batch_size), batch_size, time_step, nfeature)
-        test_x = test_x.view(int(test_x.shape[0] / batch_size), batch_size, time_step, nfeature)
+        train_x = train_x.view(
+            int(train_x.shape[0] / batch_size), batch_size, time_step, nfeature)
+        test_x = test_x.view(
+            int(test_x.shape[0] / batch_size), batch_size, time_step, nfeature)
 
         train_x = train_x.transpose(2, 1)
         test_x = test_x.transpose(2, 1)
@@ -292,7 +310,6 @@ def load_all_ext(target_region, location):
 
 
 def load_all_parent_crime(target_crime_cat, target_region, location):
-    
     """
 
     :param target_crime_cat: starts with 0
@@ -311,9 +328,11 @@ def load_all_parent_crime(target_crime_cat, target_region, location):
     side = gen_com_side_adj_matrix(com, location)
     scaler = MinMaxScaler(feature_range=(-1, 1))
     for i in range(len(com)):
-        loaded_data = torch.from_numpy(np.loadtxt("chicago_data/" + location + "/side_crime/s_" + str(side[i]) + ".txt", dtype=np.int)).T
+        loaded_data = torch.from_numpy(np.loadtxt(
+            "chicago_data/" + location + "/side_crime/s_" + str(side[i]) + ".txt", dtype=np.int)).T
         loaded_data = loaded_data[:, target_crime_cat:target_crime_cat + 1]
-        tensor_ones = torch.from_numpy(np.ones((loaded_data.size(0), loaded_data.size(1)), dtype=np.int))
+        tensor_ones = torch.from_numpy(
+            np.ones((loaded_data.size(0), loaded_data.size(1)), dtype=np.int))
         loaded_data = torch.where(loaded_data > 1, tensor_ones, loaded_data)
         x, y, z, m = create_inout_sequences(loaded_data, time_step)
 
@@ -328,12 +347,14 @@ def load_all_parent_crime(target_crime_cat, target_region, location):
         train_y = y[: train_x_size, :]  # (batch_size, time-step) = (1386, 1)
         test_x = x[train_x_size:, :]  # (batch_size, time-step) = (683, 120)
         test_x = test_x[:test_x.shape[0] - 11,
-                    :]  # (batch_size, time-step) = (672, 120) -- to make it consistent with the batch size
+                        :]  # (batch_size, time-step) = (672, 120) -- to make it consistent with the batch size
         test_y = y[train_x_size:, :]  # (batch_size, time-step) = (683, 1)
         test_y = test_y[:test_y.shape[0] - 11, :]
 
-        train_x = train_x.view(int(train_x.shape[0] / batch_size), batch_size, time_step)
-        test_x = test_x.view(int(test_x.shape[0] / batch_size), batch_size, time_step)
+        train_x = train_x.view(
+            int(train_x.shape[0] / batch_size), batch_size, time_step)
+        test_x = test_x.view(
+            int(test_x.shape[0] / batch_size), batch_size, time_step)
 
         train_x = train_x.transpose(2, 1)
         test_x = test_x.transpose(2, 1)
@@ -363,33 +384,34 @@ def load_all_parent_crime(target_crime_cat, target_region, location):
 
 
 def gen_com_adj_matrix(target_region, location):
-    
+
     adj_matrix = np.zeros((77, 77), dtype=np.int)
-    edges_unordered = np.genfromtxt("chicago_data/" + location + "/com_adjacency.txt", dtype=np.int32)
+    edges_unordered = np.genfromtxt(
+        "chicago_data/" + location + "/com_adjacency.txt", dtype=np.int32)
     for i in range(edges_unordered.shape[0]):
         src = edges_unordered[i][0] - 1
         dst = edges_unordered[i][1] - 1
         adj_matrix[src][dst] = 1
         adj_matrix[src][dst] = 1
-    np.savetxt("chicago_data/" + location + "/com_adj_matrix.txt", adj_matrix, fmt="%d")
+    np.savetxt("chicago_data/" + location +
+               "/com_adj_matrix.txt", adj_matrix, fmt="%d")
     return
 
 
 def gen_com_side_adj_matrix(regions, location):
-    
     """
     :param regions: a list of regions starting from 0
     :param location: name of the city
     :return: sides: a list of sides which are mapped (side, com) starts with 0
     """
-    idx = np.loadtxt("chicago_data/" + location + "/side_com_adj.txt", dtype=np.int)
+    idx = np.loadtxt("chicago_data/" + location +
+                     "/side_com_adj.txt", dtype=np.int)
     idx_map = {j: i for i, j in iter(idx)}
     side = [idx_map.get(x + 1) % 101 for x in regions]  # As it starts with 0
     return side
 
 
 def gen_neighbor_index_zero(target_region, location):
-    
     """
     :param target_region: starts from 0
     :param location: name of the city
@@ -405,7 +427,6 @@ def gen_neighbor_index_zero(target_region, location):
 
 
 def gen_neighbor_index_zero_with_target(target_region, location):
-    
     """
     :param target_region: starts from 0
     :param location: name of the city
@@ -417,7 +438,6 @@ def gen_neighbor_index_zero_with_target(target_region, location):
 
 
 def gen_neighbor_index_one_with_target(target_region, location):
-    
     """
     :param target_region: starts from 0
     :param location: name of the city
@@ -430,7 +450,6 @@ def gen_neighbor_index_one_with_target(target_region, location):
 
 
 def gen_gat_adj_file(target_region, location):
-    
     """
     :param target_region: starts from 0
     :param location: name of the city
@@ -446,86 +465,89 @@ def gen_gat_adj_file(target_region, location):
 
 
 def crime_representation(train_or_test, similar_regions, attention_values, current_crime_category, similar_region_number, batchNo):
-    
-    
 
     if train_or_test == 0:
         h_gat_representation = []
         for m in similar_regions:
-            file = torch.load('h_gat_representation/' + str(m) + '/' + str(current_crime_category) + '/h_gat.pkl')
+            file = torch.load('h_gat_representation/' + str(m) +
+                              '/' + str(current_crime_category) + '/h_gat.pkl')
             h_gat_representation.append(file)
-        
+
         # # now h_gat_representation has k h_gats and we have similarity score can be found using attention_values and similar_regions
-     
+
         crime_representation = 0.0
         for i in range(similar_region_number):
-            h_gat_representation_for_this_precinct = torch.cat(h_gat_representation[i][batchNo]).reshape((42, 20, 8 ))
-            crime_representation += ((attention_values[similar_regions[i]])* (h_gat_representation_for_this_precinct))
-            #crime_representation += (h_gat_representation_for_this_precinct)
-        
-        
+            h_gat_representation_for_this_precinct = torch.cat(
+                h_gat_representation[i][batchNo]).reshape((42, 20, 8))
+            crime_representation += ((attention_values[similar_regions[i]]) * (
+                h_gat_representation_for_this_precinct))
+            # crime_representation += (h_gat_representation_for_this_precinct)
+
         # # 5. (Input for LSTM): Concatenate Crime representation from 4 and Feature representation from 1
 
-        
     elif train_or_test == 1:
         h_gat_test_representation = []
 
         for m in similar_regions:
-            file = torch.load('h_gat_test_representation/' + str(m) + '/' + str(current_crime_category) + '/h_gat_test.pkl')
+            file = torch.load('h_gat_test_representation/' + str(m) +
+                              '/' + str(current_crime_category) + '/h_gat_test.pkl')
             h_gat_test_representation.append(file)
-            
-        
+
         crime_representation = 0.0
         for i in range(similar_region_number):
-            h_gat_test_representation_for_this_precinct = torch.cat(h_gat_test_representation[i][batchNo]).reshape((42, 20, 8 ))
-            crime_representation += (h_gat_test_representation_for_this_precinct * (attention_values[similar_regions[i]]))
-            #crime_representation += h_gat_test_representation_for_this_precinct
-        
-            
-            
+            h_gat_test_representation_for_this_precinct = torch.cat(
+                h_gat_test_representation[i][batchNo]).reshape((42, 20, 8))
+            crime_representation += (h_gat_test_representation_for_this_precinct *
+                                     (attention_values[similar_regions[i]]))
+            # crime_representation += h_gat_test_representation_for_this_precinct
+
     return crime_representation
 
 
 def similar_region_crimes(loaded_data, similar_regions, number_of_similar_regions, target_cat):
-    
+
     loaded_data_tl = torch.zeros(loaded_data.shape)
     for i in range(number_of_similar_regions):
-        loaded_data_transfer_learning_all_crimes = torch.from_numpy(np.loadtxt("chicago_data/chicago/com_crime/r_" + str(similar_regions[i]) + ".txt", dtype=int)).T
-        loaded_data_tl += loaded_data_transfer_learning_all_crimes[:, target_cat:target_cat+1]
+        loaded_data_transfer_learning_all_crimes = torch.from_numpy(np.loadtxt(
+            "chicago_data/chicago/com_crime/r_" + str(similar_regions[i]) + ".txt", dtype=int)).T
+        loaded_data_tl += loaded_data_transfer_learning_all_crimes[:,
+                                                                   target_cat:target_cat+1]
 
+    tensor_ones_tl = torch.from_numpy(
+        np.ones((loaded_data_tl.size(0), loaded_data_tl.size(1)), dtype=int))
+    x_tl, y_tl, x_daily_tl, x_weekly_tl = create_inout_sequences(
+        loaded_data_tl)
 
-    tensor_ones_tl = torch.from_numpy(np.ones((loaded_data_tl.size(0), loaded_data_tl.size(1)), dtype=int))
-    x_tl, y_tl, x_daily_tl, x_weekly_tl = create_inout_sequences(loaded_data_tl)
-
-    scale = MinMaxScaler(feature_range=(-1,1))
+    scale = MinMaxScaler(feature_range=(-1, 1))
     x_tl = torch.from_numpy(scale.fit_transform(x_tl))
     x_daily_tl = torch.from_numpy(scale.fit_transform(x_daily_tl))
     x_weekly_tl = torch.from_numpy(scale.fit_transform(x_weekly_tl))
     y_tl = torch.from_numpy(scale.fit_transform(y_tl))
-    train_x_tl, train_x_daily_tl, train_x_weekly_tl, train_y_tl, test_x_tl, test_x_daily_tl, test_x_weekly_tl, test_y_tl = load_self_crime(x_tl, x_daily_tl, x_weekly_tl, y_tl)
+    train_x_tl, train_x_daily_tl, train_x_weekly_tl, train_y_tl, test_x_tl, test_x_daily_tl, test_x_weekly_tl, test_y_tl = load_self_crime(
+        x_tl, x_daily_tl, x_weekly_tl, y_tl)
 
     return train_y_tl, test_y_tl
 
 
 # def handle_taxi_data(train_or_test, train_batch, test_batch):
-    
+
 #     inflows = []
 #     outflows = []
-    
+
 #     for region in range(77):
-        
+
 #         train_ext, test_ext = load_all_ext(region, "chicago")
-        
+
 #         if train_or_test == 0:
 #             taxi_data = train_ext
 #             number_of_batches = train_batch
 #         else:
 #             taxi_data = test_ext
 #             number_of_batches = test_batch
-        
+
 #         inflow_for_this_region = []
 #         outflow_for_this_region = []
-        
+
 #         for i in range(number_of_batches):
 #             x_ext = torch.empty((len(taxi_data[i]),taxi_data[i][0].shape[0],taxi_data[i][0].shape[1], taxi_data[i][0].shape[2]), dtype=torch.float32)
 #             for j in range(len(taxi_data[i])):
@@ -538,13 +560,11 @@ def similar_region_crimes(loaded_data, similar_regions, number_of_similar_region
 #             taxi_flow_new_shape_0 = int((inflow.shape[0] * inflow.shape[1] * inflow.shape[2]) / 10)
 #             inflow = torch.reshape(inflow, (taxi_flow_new_shape_0, taxi_flow_new_shape_1))
 #             outflow = torch.reshape(outflow, (taxi_flow_new_shape_0, taxi_flow_new_shape_1))
-            
+
 #             inflow_for_this_region.append(inflow)
 #             outflow_for_this_region.append(outflow)
-       
+
 #         inflows.append(inflow_for_this_region)
 #         outflows.append(outflow_for_this_region)
-    
-#     return inflows, outflows
 
-        
+#     return inflows, outflows
