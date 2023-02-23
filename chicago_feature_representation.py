@@ -66,7 +66,7 @@ class PointsOfInterest(torch.nn.Module):
             self.autoencoder.parameters(), lr=0.01)
 
     def forward(self):
-        data = Data(num_nodes=self.x[self.region].shape[0]+1, edge_index=torch.tensor(
+        data = Data(num_nodes=self.x[self.region].shape[0], edge_index=torch.tensor(
             self.edge_index[self.region]), train_mask=None, test_mask=None, val_mask=None)
         train_data, val_data, test_data = transform(data)
         train_pos_edge_index = train_data.edge_label_index

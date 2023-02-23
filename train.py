@@ -19,8 +19,8 @@ np.random.normal(seed & 0xFFFFFFFF)
 torch.manual_seed(seed & 0xFFFFFFFF)
 
 
-chicago_region = 73
-current_crime_category = 0
+chicago_region = 0
+current_crime_category = 2
 k = 16
 lr = 0.004  # initial learning rate 0.004
 epoch_total = 321

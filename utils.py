@@ -13,8 +13,8 @@ def create_inout_sequences(input_data, tw=120):
     # print(input_data.shape)
 
     # Consecutive_temporal_data_generation
-    in_seq1 = torch.from_numpy(np.ones((8000, tw), dtype=np.int))
-    out_seq1 = torch.from_numpy(np.ones((8000, forecast), dtype=np.int))
+    in_seq1 = torch.from_numpy(np.ones((8000, tw), dtype=int))
+    out_seq1 = torch.from_numpy(np.ones((8000, forecast), dtype=int))
     L = input_data.shape[0]
     for i in range(L - tw - forecast):
         train_seq = input_data[i:i + tw, :]
@@ -29,7 +29,7 @@ def create_inout_sequences(input_data, tw=120):
     num_samples = in_seq1.shape[0]
     time_step_daily = int(tw / 6)
     in_seq2 = torch.from_numpy(
-        np.ones((num_samples, time_step_daily), dtype=np.int))
+        np.ones((num_samples, time_step_daily), dtype=int))
     for i in range(num_samples):
         k = 0
         for j in range(tw):
@@ -40,7 +40,7 @@ def create_inout_sequences(input_data, tw=120):
     # Weekly_temporal_data_generation
     time_step_weekly = int(tw / (6 * 7)) + 1
     in_seq3 = torch.from_numpy(
-        np.ones((num_samples, time_step_weekly), dtype=np.int))
+        np.ones((num_samples, time_step_weekly), dtype=int))
     for i in range(num_samples):
         k = 0
         for j in range(tw):
@@ -72,15 +72,15 @@ def load_data_GAT():
     # build graph
     num_reg = int(idx_features_labels.shape[0] / (42))
     # replaced 5
-    idx = np.array(idx_features_labels[:num_reg, 0], dtype=np.int32)
+    idx = np.array(idx_features_labels[:num_reg, 0], dtype=int32)
     idx_map = {j: i for i, j in enumerate(idx)}
-    edges_unordered = np.genfromtxt("chicago_data/gat_adj.txt", dtype=np.int32)
+    edges_unordered = np.genfromtxt("chicago_data/gat_adj.txt", dtype=int32)
 
     if edges_unordered.ndim == 1 and edges_unordered.shape[0] == 2:
         edges_unordered = edges_unordered.reshape([1, 2])
 
     edges = np.array(list(map(idx_map.get, edges_unordered.flatten())),
-                     dtype=np.int32).reshape(edges_unordered.shape)
+                     dtype=int32).reshape(edges_unordered.shape)
     adj = sp.coo_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])), shape=(num_reg, num_reg),
                         dtype=np.float32)  # replaced 5
     # build symmetric adjacency matrix
@@ -329,10 +329,10 @@ def load_all_parent_crime(target_crime_cat, target_region, location):
     scaler = MinMaxScaler(feature_range=(-1, 1))
     for i in range(len(com)):
         loaded_data = torch.from_numpy(np.loadtxt(
-            "chicago_data/" + location + "/side_crime/s_" + str(side[i]) + ".txt", dtype=np.int)).T
+            "chicago_data/" + location + "/side_crime/s_" + str(side[i]) + ".txt", dtype=int)).T
         loaded_data = loaded_data[:, target_crime_cat:target_crime_cat + 1]
         tensor_ones = torch.from_numpy(
-            np.ones((loaded_data.size(0), loaded_data.size(1)), dtype=np.int))
+            np.ones((loaded_data.size(0), loaded_data.size(1)), dtype=int))
         loaded_data = torch.where(loaded_data > 1, tensor_ones, loaded_data)
         x, y, z, m = create_inout_sequences(loaded_data, time_step)
 
@@ -385,9 +385,9 @@ def load_all_parent_crime(target_crime_cat, target_region, location):
 
 def gen_com_adj_matrix(target_region, location):
 
-    adj_matrix = np.zeros((77, 77), dtype=np.int)
+    adj_matrix = np.zeros((77, 77), dtype=int)
     edges_unordered = np.genfromtxt(
-        "chicago_data/" + location + "/com_adjacency.txt", dtype=np.int32)
+        "chicago_data/" + location + "/com_adjacency.txt", dtype=int32)
     for i in range(edges_unordered.shape[0]):
         src = edges_unordered[i][0] - 1
         dst = edges_unordered[i][1] - 1
@@ -405,7 +405,7 @@ def gen_com_side_adj_matrix(regions, location):
     :return: sides: a list of sides which are mapped (side, com) starts with 0
     """
     idx = np.loadtxt("chicago_data/" + location +
-                     "/side_com_adj.txt", dtype=np.int)
+                     "/side_com_adj.txt", dtype=int)
     idx_map = {j: i for i, j in iter(idx)}
     side = [idx_map.get(x + 1) % 101 for x in regions]  # As it starts with 0
     return side
